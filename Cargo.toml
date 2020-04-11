@@ -1,5 +1,5 @@
 [package]
-name = "array"
+name = "arr"
 version = "0.1.0"
 authors = ["Adam Schwab <adam@the-schwabs.net>"]
 edition = "2018"
