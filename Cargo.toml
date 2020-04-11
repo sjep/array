@@ -4,5 +4,8 @@ version = "0.1.0"
 authors = ["Adam Schwab <adam@the-schwabs.net>"]
 edition = "2018"
 license = "MIT"
+description = "A heap based fixed-sized array"
+repository = "https://github.com/sjep/array.git"
+keywords = ["container", "array"]
 
 [dependencies]

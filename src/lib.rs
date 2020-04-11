@@ -1,7 +1,7 @@
 use std::alloc::{alloc, dealloc, Layout};
 use std::ops::{Index, IndexMut};
 
-struct Array<T>
+pub struct Array<T>
   where T: Default + Copy {
     size: usize,
     ptr: *mut T
