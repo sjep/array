@@ -108,7 +108,7 @@ impl<'a, T> ExactSizeIterator for ArrayIter<'a, T>
   where T: Default + Copy {
 
     fn len(&self) -> usize {
-        self.arr.size
+        self.arr.size - self.iter
     }
 
 }
