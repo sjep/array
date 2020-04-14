@@ -11,7 +11,7 @@
 //! ```
 //!
 //! Try to do this with a traditional array:
-//! ```
+//! ```no_run
 //! let big_array: Box<[u8; 1 << 25]> = Box::new([0u8; 1 << 25]);
 //! ```
 //!
@@ -19,8 +19,13 @@
 //! Copy) and new_from_template, only requiring clone. As long as this type fits on the stack and
 //! the array fits in memory this should be allocatable.
 //!
-use std::alloc::{alloc, dealloc, Layout};
+#![feature(const_generics)]
+mod zeroable;
+
+use std::alloc::{alloc, alloc_zeroed, dealloc, Layout};
 use std::ops::{Index, IndexMut};
+
+use crate::zeroable::Zeroable;
 
 pub struct Array<T> {
     size: usize,
@@ -39,6 +44,20 @@ impl<T> Array<T> {
     /// The length of the array (number of elements T)
     pub fn len(&self) -> usize {
         self.size
+    }
+}
+
+impl<T> Array<T>
+  where T: Zeroable {
+    /// Extremely fast initialization if all you want is 0's. Note that your type must be Zeroable.
+    /// The auto-Zeroable types are u8, i8, u16, i16, u32, i32, u64, i64, usize, isize, f32, f64.
+    pub fn zero(size: usize) -> Self {
+        let objsize = std::mem::size_of::<T>();
+        let layout = Layout::from_size_align(size * objsize, 8).unwrap();
+        let ptr = unsafe {
+            alloc_zeroed(layout) as *mut T
+        };
+        Self{size, ptr}
     }
 }
 
@@ -118,6 +137,8 @@ impl<'a, T> IntoIterator for &'a Array<T> {
     /// For now, you can only for loop iterate directly over the
     /// reference:
     /// ```
+    /// use arr::Array;
+    /// let arr: Array<usize> = Array::new(6);
     /// for i in &arr {
     ///     println!("{}", i);
     /// }
@@ -173,6 +194,7 @@ mod test {
         assert_eq!(arr[4095][255], 65);
     }
 
+    #[derive(Clone)]
     struct Unaligned {
         a: u64,
         b: u16
@@ -186,5 +208,12 @@ mod test {
         assert_eq!(arr[3].b, 32);
         assert_eq!(arr[4].a, 15);
         assert_eq!(arr[4].b, 32);
+    }
+
+    #[test]
+    fn test_zeroed() {
+        // 8 * 4096 * 4096 = 8X16MB = 128MB
+        let arr: Array<[usize; 4096]> = Array::zero(4096);
+        assert_eq!(arr[4095][4095], 0);
     }
 }
