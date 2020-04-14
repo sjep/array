@@ -6,8 +6,16 @@
 //! Basic usage:
 //! ```
 //! use arr::Array;
+//! // zero - fast allocation
+//! let big_array: Array<u8> = Array::zero(1 << 25);
+//! // default - slow allocation
+//! let big_array2: Array<u8> = Array::new(1 << 25);
+//! // template
+//! let template = 10u8;
+//! let big_array3: Array<u8> = Array::new_from_template(1 << 25, &template);
 //!
-//! let big_array: Array<u8> = Array::new(1 << 25);
+//! // Also works for 2d arrays (note even the sub-array would ordinarily blow stack)
+//! let big_2d_array: Array<[u8; 1 << 25]> = Array::zero(4);
 //! ```
 //!
 //! Try to do this with a traditional array:
@@ -51,6 +59,7 @@ impl<T> Array<T>
   where T: Zeroable {
     /// Extremely fast initialization if all you want is 0's. Note that your type must be Zeroable.
     /// The auto-Zeroable types are u8, i8, u16, i16, u32, i32, u64, i64, usize, isize, f32, f64.
+    /// Also std::Arrays also implement Zeroable allowing for types like `[u8; 1 << 25]`.
     pub fn zero(size: usize) -> Self {
         let objsize = std::mem::size_of::<T>();
         let layout = Layout::from_size_align(size * objsize, 8).unwrap();
