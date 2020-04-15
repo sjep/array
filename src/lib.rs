@@ -37,8 +37,11 @@ use crate::zeroable::Zeroable;
 
 pub struct Array<T> {
     size: usize,
-    ptr: *mut T
+    ptr: *mut T,
 }
+
+unsafe impl<T> Sync for Array<T>{}
+unsafe impl<T> Send for Array<T>{}
 
 impl<T> Array<T> {
     /// Create an immutable iterator over elements in Array.
@@ -186,6 +189,8 @@ impl<'a, T> ExactSizeIterator for ArrayIter<'a, T> {
 
 #[cfg(test)]
 mod test {
+    use std::thread;
+    use std::sync::{Arc, Mutex};
     use super::*;
 
     #[test]
@@ -224,5 +229,33 @@ mod test {
         // 8 * 4096 * 4096 = 8X16MB = 128MB
         let arr: Array<[usize; 4096]> = Array::zero(4096);
         assert_eq!(arr[4095][4095], 0);
+    }
+
+    #[test]
+    fn test_async() {
+        let arr: Array<usize> = Array::zero(5);
+
+        let tid = thread::spawn(move || {
+            assert_eq!(arr[3], 0);
+        });
+
+        let _ = tid.join();
+    }
+
+    #[test]
+    fn test_mut_async() {
+        let mut arr: Arc<Mutex<Array<usize>>> = Arc::new(Mutex::new(Array::zero(5)));
+        {
+            let mut arr = (&*arr).lock().unwrap();
+            arr[4] = 1;
+        }
+        let mut carr = arr.clone();
+        let tid = thread::spawn(move || {
+            let mut arr = (&*carr).lock().unwrap();
+            assert_eq!(arr[4], 1);
+            arr[4] = 0;
+        });
+        tid.join().unwrap();
+        assert_eq!((&*arr).lock().unwrap()[4], 0);
     }
 }
