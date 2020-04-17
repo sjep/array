@@ -262,8 +262,8 @@ mod test {
     #[test]
     fn test_loop() {
         let arr: Array<usize> = Array::new_from_template(5, &5);
-        for i in 0..5 {
-            assert_eq!(arr[i], 5);
+        for i in arr.iter() {
+            assert_eq!(*i, 5);
         }
     }
 }
