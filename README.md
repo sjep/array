@@ -1,6 +1,7 @@
 The arr crate provides a single fixed-sized array data-structure that is purely heap-based.
 
 [Crates.io](https://crates.io/crates/arr)
+
 [Docs](https://docs.rs/arr/latest/arr/)
 
 Include:
@@ -14,7 +15,7 @@ Basic usage:
 use arr::Array;
 
 // Allocate a 16MB chunk of zeros as 16 byte sub-arrays
-let huge_array = Array<[u8; 16]>::zero(1 << 20);
+let huge_array: Array<[u8; 16]> = Array::zero(1 << 20);
 println!("{}", huge_array.len());
 ```
 
