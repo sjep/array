@@ -169,7 +169,7 @@ impl<'a, T> Iterator for ArrayIter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.iter < self.len() {
+        match self.iter < self.arr.len() {
             true => {
                 self.iter += 1;
                 Some(&self.arr[self.iter - 1])
@@ -257,5 +257,13 @@ mod test {
         });
         tid.join().unwrap();
         assert_eq!((&*arr).lock().unwrap()[4], 0);
+    }
+
+    #[test]
+    fn test_loop() {
+        let arr: Array<usize> = Array::new_from_template(5, &5);
+        for i in 0..5 {
+            assert_eq!(arr[i], 5);
+        }
     }
 }
