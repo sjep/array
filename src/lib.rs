@@ -1,4 +1,5 @@
-//! arr is a simple array crate designed to allow huge array allocation without stack overflows.
+//! The arr crate is a simple array crate designed to allow huge array allocation without stack
+//! overflows.
 //!
 //! Even in rustc 1.44 allocating arrays too large to fit on the stack (say 8MB in size) will
 //! stack overflow even if the array is Boxed.
@@ -23,8 +24,10 @@
 //! let big_array: Box<[u8; 1 << 25]> = Box::new([0u8; 1 << 25]);
 //! ```
 //!
-//! Currently the array supports two modes of allocation, via new (requires types to have Default +
-//! Copy) and new_from_template, only requiring clone. As long as this type fits on the stack and
+//! Currently the array supports three modes of allocation, via `new` (requires types to have Default +
+//! Copy) and `new_from_template`, only requiring Clone. The `zero` constructor uses an internal
+//! Zeroable trait only set for primitive types and their arrays. In the future this concept may be
+//! unsafely extended outside of this crate but for now it's private. As long as this type fits on the stack and
 //! the array fits in memory this should be allocatable.
 //!
 #![feature(const_generics)]
@@ -52,6 +55,19 @@ impl<T> Array<T> {
         }
     }
 
+    /// Convert to slice
+    pub fn to_slice<'a>(&'a self) -> &'a [T] {
+        unsafe { std::slice::from_raw_parts(self.ptr as *const T, self.size) }
+    }
+
+    /// Convert to mutable slice
+    pub fn to_slice_mut<'a>(&'a mut self) -> &'a mut [T] {
+        unsafe { std::slice::from_raw_parts_mut(self.ptr, self.size) }
+    }
+
+    //pub fn to_slice_mut<'a>(&'a mut self) -> &'a mut [T] {
+    //    slice::
+
     /// The length of the array (number of elements T)
     pub fn len(&self) -> usize {
         self.size
@@ -62,7 +78,7 @@ impl<T> Array<T>
   where T: Zeroable {
     /// Extremely fast initialization if all you want is 0's. Note that your type must be Zeroable.
     /// The auto-Zeroable types are u8, i8, u16, i16, u32, i32, u64, i64, usize, isize, f32, f64.
-    /// Also std::Arrays also implement Zeroable allowing for types like `[u8; 1 << 25]`.
+    /// `std::Array`s also implement Zeroable allowing for types like `[u8; 1 << 25]`.
     pub fn zero(size: usize) -> Self {
         let objsize = std::mem::size_of::<T>();
         let layout = Layout::from_size_align(size * objsize, 8).unwrap();
@@ -244,12 +260,12 @@ mod test {
 
     #[test]
     fn test_mut_async() {
-        let mut arr: Arc<Mutex<Array<usize>>> = Arc::new(Mutex::new(Array::zero(5)));
+        let arr: Arc<Mutex<Array<usize>>> = Arc::new(Mutex::new(Array::zero(5)));
         {
             let mut arr = (&*arr).lock().unwrap();
             arr[4] = 1;
         }
-        let mut carr = arr.clone();
+        let carr = arr.clone();
         let tid = thread::spawn(move || {
             let mut arr = (&*carr).lock().unwrap();
             assert_eq!(arr[4], 1);
@@ -262,8 +278,18 @@ mod test {
     #[test]
     fn test_loop() {
         let arr: Array<usize> = Array::new_from_template(5, &5);
-        for i in arr.iter() {
-            assert_eq!(*i, 5);
+        let mut cnt = 0;
+        for _ in arr.iter() {
+            cnt += 1;
         }
+        assert_eq!(cnt, 5);
+    }
+
+    #[test]
+    fn test_copy_from() {
+        let mut arr: Array<usize> = Array::new_from_template(5, &5);
+        let from: [usize; 5] = [1usize; 5];
+        arr.to_slice_mut().copy_from_slice(&from);
+        assert_eq!(arr[4], 1);
     }
 }
