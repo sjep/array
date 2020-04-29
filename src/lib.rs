@@ -1,4 +1,4 @@
-//! The arr crate is a simple array crate designed to allow huge array allocation without stack
+//! The arr crate is a simple fixed size array designed to allow huge array allocation without stack
 //! overflows.
 //!
 //! Even in rustc 1.44 allocating arrays too large to fit on the stack (say 8MB in size) will
@@ -34,7 +34,7 @@
 mod zeroable;
 
 use std::alloc::{alloc, alloc_zeroed, dealloc, Layout};
-use std::ops::{Index, IndexMut};
+use std::ops::{Index, IndexMut, Range};
 
 use crate::zeroable::Zeroable;
 
@@ -145,7 +145,21 @@ impl<T> IndexMut<usize> for Array<T> {
             self.ptr.wrapping_offset(idx as isize).as_mut()
         }.unwrap()
     }
+}
 
+impl<T> Index<Range<usize>> for Array<T> {
+    type Output = [T];
+
+    fn index<'a>(&'a self, idx: Range<usize>) -> &'a Self::Output {
+        &self.to_slice()[idx]
+    }
+}
+
+impl<T> IndexMut<Range<usize>> for Array<T> {
+
+    fn index_mut<'a>(&'a mut self, idx: Range<usize>) -> &'a mut Self::Output {
+        &mut self.to_slice_mut()[idx]
+    }
 }
 
 impl<T> Drop for Array<T> {
@@ -200,7 +214,6 @@ impl<'a, T> ExactSizeIterator for ArrayIter<'a, T> {
     fn len(&self) -> usize {
         self.arr.size - self.iter
     }
-
 }
 
 #[cfg(test)]
@@ -291,5 +304,25 @@ mod test {
         let from: [usize; 5] = [1usize; 5];
         arr.to_slice_mut().copy_from_slice(&from);
         assert_eq!(arr[4], 1);
+    }
+
+    #[test]
+    fn test_range() {
+        let arr: Array<usize> = Array::zero(10);
+        let mut cnt = 0;
+        for _i in &arr[0..5] {
+            cnt += 1;
+        }
+        assert_eq!(cnt, 5);
+    }
+
+    #[test]
+    fn test_range_mut() {
+        let mut arr: Array<usize> = Array::zero(10);
+        let slice = &mut arr[0..5];
+        for i in slice {
+            *i = 5;
+        }
+        assert_eq!(arr[4], 5);
     }
 }

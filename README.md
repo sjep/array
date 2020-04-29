@@ -7,7 +7,7 @@ The arr crate provides a single fixed-sized array data-structure that is purely 
 Include:
 ```
 [dependencies]
-arr = "0.5.0"
+arr = "0.6.0"
 ```
 
 Basic usage:

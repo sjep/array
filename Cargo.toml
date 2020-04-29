@@ -1,6 +1,6 @@
 [package]
 name = "arr"
-version = "0.5.1"
+version = "0.6.0"
 authors = ["Adam Schwab <adam@the-schwabs.net>"]
 edition = "2018"
 license = "MIT"
