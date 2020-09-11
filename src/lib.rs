@@ -36,15 +36,15 @@ mod zeroable;
 use std::alloc::{alloc, alloc_zeroed, dealloc, Layout};
 use std::ops::{Index, IndexMut, Range};
 
-use crate::zeroable::Zeroable;
+pub use crate::zeroable::Zeroable;
 
 pub struct Array<T> {
     size: usize,
     ptr: *mut T,
 }
 
-unsafe impl<T> Sync for Array<T>{}
-unsafe impl<T> Send for Array<T>{}
+unsafe impl<T: Sync> Sync for Array<T>{}
+unsafe impl<T: Send> Send for Array<T>{}
 
 impl<T> Array<T> {
     /// Create an immutable iterator over elements in Array.
@@ -64,9 +64,6 @@ impl<T> Array<T> {
     pub fn to_slice_mut<'a>(&'a mut self) -> &'a mut [T] {
         unsafe { std::slice::from_raw_parts_mut(self.ptr, self.size) }
     }
-
-    //pub fn to_slice_mut<'a>(&'a mut self) -> &'a mut [T] {
-    //    slice::
 
     /// The length of the array (number of elements T)
     pub fn len(&self) -> usize {
@@ -119,7 +116,7 @@ impl<T> Array<T>
         };
         for i in 0..size {
             unsafe {
-                (*(ptr.wrapping_offset(i as isize))) = template.clone();
+                ptr.wrapping_offset(i as isize).write(template.clone());
             }
         }
         Self{size, ptr}
@@ -130,20 +127,14 @@ impl<T> Index<usize> for Array<T> {
     type Output = T;
 
     fn index<'a>(&'a self, idx: usize) -> &'a Self::Output {
-
-        unsafe {
-            self.ptr.wrapping_offset(idx as isize).as_ref()
-        }.unwrap()
+        &self.to_slice()[idx]
     }
 }
 
 impl<T> IndexMut<usize> for Array<T> {
 
     fn index_mut<'a>(&'a mut self, idx: usize) -> &'a mut Self::Output {
-
-        unsafe {
-            self.ptr.wrapping_offset(idx as isize).as_mut()
-        }.unwrap()
+        &mut self.to_slice_mut()[idx]
     }
 }
 
@@ -167,7 +158,11 @@ impl<T> Drop for Array<T> {
     fn drop(&mut self) {
         let objsize = std::mem::size_of::<T>();
         let layout = Layout::from_size_align(self.size * objsize, 8).unwrap();
+
         unsafe {
+            for i in 0..(self.size as isize) {
+                std::ptr::drop_in_place(self.ptr.wrapping_offset(i));
+            }
             dealloc(self.ptr as *mut u8, layout);
         }
     }
@@ -324,5 +319,15 @@ mod test {
             *i = 5;
         }
         assert_eq!(arr[4], 5);
+    }
+
+    #[test]
+    fn test_sync() {
+        let arr = Array::new_from_template(1, &&1usize);
+
+        std::thread::spawn(move || {
+            // shouldn't be allowed!
+            let _ = arr[0].clone();
+        }).join().unwrap();
     }
 }
